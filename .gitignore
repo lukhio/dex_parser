@@ -1,0 +1,4 @@
+/target
+*.pdf
+*.dex
+src/.*.swp
