@@ -25,7 +25,7 @@ pub fn verify(fpath: &str, checksum: u32) -> Result<bool, Error> {
      *
      * Note: using remove will shift all the data to the left, which is why we
      * always remove the item at index 0 */
-    for _ in (0..12) {
+    for _ in 0..12 {
         data.remove(0);
     }
 
