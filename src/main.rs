@@ -9,7 +9,6 @@ use std::io::{
     Read,
     Error,
 };
-use zip::ZipArchive;
 
 mod adler32;
 mod raw_types;
@@ -244,6 +243,8 @@ fn main() {
 
     let apk_path = &args[1];
     /*
+     * FIXME: this is just temporary, delete this when this seems to be working
+     *
     println!("[+] Parsing {}", apk_path);
 
     let raw_file = fs::File::open(apk_path).expect("Error: cannot open APK");
@@ -271,7 +272,6 @@ fn main() {
     };
 
     println!("[+] Decoding DEX header");
-
     let header = Header::from_raw_data(&dex_buffer, endianness)
                  .expect("Error: cannot parse header");
 
@@ -283,19 +283,29 @@ fn main() {
         panic!("Error: Adler32 checksum does not match");
     }
 
-    /* Parsing header map */
-    println!("map: {:02X}", header._map_off);
-    println!("file: {:02X}", header._file_size);
-
-    /* Get only the map */
+    println!("[+] Parsing header map");
     let mut map_data = &dex_buffer[header._map_off as usize ..];
     let map_size = map_data.read_u32::<LittleEndian>().unwrap();
-    println!("size: {:02X}", map_size);
 
     let mut header_map = HeaderMap::build(map_size, header._map_off, header._file_size)
                          .expect("Error: cannot build HeaderMap object");
 
     for _ in 0..map_size {
+        /* Item type */
+        let item_type = map_data.read_u16::<LittleEndian>().unwrap();
+        /* Unused */
+        let _ = map_data.read_u16::<LittleEndian>().unwrap();
+        /* Item size (number of entries) */
+        let item_size = map_data.read_u32::<LittleEndian>().unwrap();
+        /* Item offset */
+        let item_offset = map_data.read_u32::<LittleEndian>().unwrap();
+
+        header_map.add_item(item_type, item_size, item_offset);
+    }
+
+    header_map.compute_entries_size_bytes();
+
+    /* for _ in 0..map_size {
         let item_type = map_data.read_u16::<LittleEndian>().unwrap();
         let _ = map_data.read_u16::<LittleEndian>().unwrap();  // unused
         let item_size = map_data.read_u32::<LittleEndian>().unwrap();
@@ -316,33 +326,5 @@ fn main() {
                 println!("item_size {:02X}", item_size);
                 println!("item_offset {:02X}", item_offset);
             }
-        };
-    }
-
-    header_map.compute_entries_size_bytes();
-
-    println!("{:02X}", raw_types::MapItemType::STRING_ID_ITEM as u32);
-
-
-    /* TODO: first parse the map
-    println!("String IDs offset: {:02X}", header._string_ids_off);
-    println!("String IDs size: {:02X}", header._string_ids_size);
-
-    let start: usize = header._string_ids_off as usize;
-    let end: usize = start + header._string_ids_size as usize;
-
-    println!("String IDs start: {:}", start);
-    println!("String IDs end: {:}", end);
-
-    let mut strings: Vec<String> = Vec::new();
-    let mut string_ids = &dex_buffer[start..end];
-    let mut i = start;
-    while i < end {
-        let id = string_ids.read_u32::<LittleEndian>().unwrap();
-        println!("ID: {:02X}", id);
-        let string_len = &dex_buffer[id as usize];
-        println!("Length: {:02X}", string_len);
-        i += 4;
-        if i > start + 40 { break }
-    } */
+        };*/
 }
