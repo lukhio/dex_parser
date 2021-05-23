@@ -18,7 +18,7 @@ mod mutf8;
 const ENDIAN_CONSTANT: (u8, u8, u8, u8) = (0x12, 0x34, 0x56, 0x78);
 const REVERSE_ENDIAN_CONSTANT: (u8, u8, u8, u8) = (0x78, 0x56, 0x34, 0x12);
 
-struct Header {
+struct DexHeader {
     _version: [u8; 3],
     _checksum: u32,
     _signature: [u8; 20],
@@ -44,7 +44,7 @@ struct Header {
     _data_off: u32
 }
 
-impl Header {
+impl DexHeader {
     fn from_raw_data(mut raw_data: &[u8], endianness: nom::number::Endianness) -> Result<Self, Error> {
         /* TODO: right now we do not use the endianness arg. We assume the DEX
          * file is little endian (as per the standard) but it might not always
@@ -86,7 +86,7 @@ impl Header {
         let data_size = raw_data.read_u32::<LittleEndian>().unwrap();
         let data_off = raw_data.read_u32::<LittleEndian>().unwrap();
 
-        Ok(Header {
+        Ok(DexHeader {
                 _version: version,
                 _checksum: checksum,
                 _signature: signature,
@@ -272,7 +272,7 @@ fn main() {
     };
 
     println!("[+] Decoding DEX header");
-    let header = Header::from_raw_data(&dex_buffer, endianness)
+    let header = DexHeader::from_raw_data(&dex_buffer, endianness)
                  .expect("Error: cannot parse header");
 
     // TODO: check after header is parsed, before going further
