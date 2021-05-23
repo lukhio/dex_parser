@@ -3,3 +3,5 @@
 *.dex
 src/.*.swp
 *.apk
+*.smali
+*.jar

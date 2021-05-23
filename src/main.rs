@@ -12,6 +12,12 @@ use std::io::{
 use zip::ZipArchive;
 
 mod adler32;
+mod raw_types;
+mod mutf8;
+
+/* Endianness constants */
+const ENDIAN_CONSTANT: (u8, u8, u8, u8) = (0x12, 0x34, 0x56, 0x78);
+const REVERSE_ENDIAN_CONSTANT: (u8, u8, u8, u8) = (0x78, 0x56, 0x34, 0x12);
 
 struct Header {
     _version: [u8; 3],
@@ -39,15 +45,11 @@ struct Header {
     _data_off: u32
 }
 
-/* Endianness constants */
-const ENDIAN_CONSTANT: (u8, u8, u8, u8) = (0x12, 0x34, 0x56, 0x78);
-const REVERSE_ENDIAN_CONSTANT: (u8, u8, u8, u8) = (0x78, 0x56, 0x34, 0x12);
-
 impl Header {
     fn from_raw_data(mut raw_data: &[u8], endianness: nom::number::Endianness) -> Result<Self, Error> {
         /* TODO: right now we do not use the endianness arg. We assume the DEX
          * file is little endian (as per the standard) but it might not always
-         * be the case. It should be possible to use nom here, and call e.g., u32! */ 
+         * be the case. It should be possible to use nom here, and call e.g., u32! */
 
         /* DEX version */
         let mut magic = [0; 8];
@@ -111,83 +113,124 @@ impl Header {
                 _data_off:data_off
             })
     }
+}
 
-    fn from_path(file_path: &str, endianness: nom::number::Endianness) -> Result<Self, Error> {
-        /* TODO: right now we do not use the endianness arg. We assume the DEX
-         * file is little endian (as per the standard) but it might not always
-         * be the case. */ 
+#[allow(dead_code)]
+struct HeaderMapItem {
+    item_type: u16,
+    size_entries: u32,
+    size_bytes: u32,
+    offset: u32
+}
 
-        let mut raw_file = fs::File::open(file_path)
-                           .expect("Error: cannot open classes.dex");
+impl HeaderMapItem {
+    fn build(item_type: u16, item_size: u32, item_offset: u32) -> Result<Self, Error> {
+        Ok(HeaderMapItem {
+            item_type: item_type,
+            size_entries: item_size,
+            size_bytes: 0,
+            offset: item_offset
+        })
+    }
+}
 
-        /* DEX version */
-        /* There is probably a nicer way to do this */
-        let mut magic = [0; 8];
-        let _ = raw_file.by_ref().take(8).read(&mut magic);
-        let mut version = [0; 3];
-        version[0] = magic[4];
-        version[1] = magic[5];
-        version[2] = magic[6];
+#[allow(dead_code)]
+struct HeaderMap {
+    size_entries: u32,
+    size_bytes: u32,
+    items: Vec<HeaderMapItem>
+}
 
-        /* Verify Adler-32 checksum */
-        let checksum = raw_file.read_u32::<LittleEndian>().unwrap();
-        let do_checksum_match = adler32::verify_from_path(&file_path, checksum)
-                                .expect("Error: cannot verify checksum");
-        if !do_checksum_match {
-            panic!("Error: Adler32 checksum does not match");
+impl HeaderMap {
+    fn build(map_size: u32, map_offset: u32, dex_file_size: u32) -> Result<Self, Error> {
+        let map_bytes = dex_file_size - map_offset;
+
+        Ok(HeaderMap {
+            size_entries: map_size,
+            size_bytes: map_bytes,
+            items: Vec::new()
+        })
+    }
+
+    fn add_item(&mut self, item_type: u16, item_size: u32, item_offset: u32) {
+        let item = HeaderMapItem::build(item_type, item_size, item_offset)
+                   .expect("Error: cannot create HeaderMapItem object");
+        self.items.push(item);
+    }
+
+    fn compute_entries_size_bytes(&mut self) {
+        println!("========== begin compute_entries_size_bytes ==========");
+        let mut last_offset = 0;
+        for mut entry in self.items.iter_mut() {
+            match entry.item_type {
+                raw_types::MapItemType::HEADER_ITEM => continue,
+                raw_types::MapItemType::MAP_LIST => continue,
+                _ => {
+                    entry.size_bytes = entry.offset - last_offset;
+                    last_offset = entry.offset;
+                }
+            };
         }
 
-        // TODO: maybe check the signature as well
-        let mut signature = [0; 20];
-        let _ = raw_file.by_ref().take(20).read(&mut signature);
+        for entry in self.items.iter() {
+            println!("{:02X} | {:}", entry.item_type, entry.size_bytes);
+        }
+        println!("========== end compute_entries_size_bytes ==========");
+    }
+}
 
-        let file_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let header_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let endian_tag = raw_file.read_u32::<LittleEndian>().unwrap();
+struct DexData {
+    _strings: Vec<String>,
+}
 
-        let link_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let link_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let map_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let string_ids_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let string_ids_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let type_ids_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let type_ids_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let proto_ids_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let proto_ids_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let fields_ids_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let fields_ids_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let method_ids_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let method_ids_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let class_defs_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let class_defs_off = raw_file.read_u32::<LittleEndian>().unwrap();
-        let data_size = raw_file.read_u32::<LittleEndian>().unwrap();
-        let data_off = raw_file.read_u32::<LittleEndian>().unwrap();
+impl DexData {
+    fn parse_string_data(mut strings_data: &[u8], item_size: u32) {
+        println!("===================");
+        println!("BEGIN Parse strings");
+        println!("===================");
 
-        Ok(Header {
-                _version: version,
-                _checksum: checksum,
-                _signature: signature,
-                _file_size: file_size,
-                _header_size: header_size,
-                _endian_tag: endian_tag,
-                _link_size: link_size,
-                _link_off: link_off,
-                _map_off: map_off,
-                _string_ids_size: string_ids_size,
-                _string_ids_off: string_ids_off,
-                _type_ids_size: type_ids_size,
-                _type_ids_off: type_ids_off,
-                _proto_ids_size: proto_ids_size,
-                _proto_ids_off: proto_ids_off,
-                _fields_ids_size: fields_ids_size,
-                _fields_ids_off: fields_ids_off,
-                _method_ids_size: method_ids_size,
-                _method_ids_off: method_ids_off,
-                _class_defs_size: class_defs_size,
-                _class_defs_off: class_defs_off,
-                _data_size: data_size,
-                _data_off:data_off
-            })
+        let mut idx: u64 = 0;
+        let mut string_idx = 0;
+        while string_idx < item_size {
+            /* Read string size, which is an unsigned LEB128 */
+            let string_size = leb128::read::unsigned(&mut strings_data)
+                              .expect("Error: cannot get string size");
+            println!("{:} | {:}", idx, string_size);
+
+            /* let s = match std::str::from_utf8(&strings_data[i as usize .. (i + string_size) as usize]) {
+                Ok(v) => v,
+                Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
+            };
+
+            println!("result: {}", s); */
+
+            let start: usize = idx as usize;
+            let end: usize = (idx + string_size) as usize;
+
+            println!("{:}", strings_data.len());
+            for i in start..end {
+                println!("{:}", strings_data[i]);
+            }
+            let s = &strings_data[start..end];
+            // let s2 = &s.into_iter().map(|e| e as u32).copied().collect();
+            println!("{:02X?}", s);
+            println!("----------");
+            let decoded = mutf8::decode(s);
+            println!("{:}", decoded);
+
+            /* Increment idx of its own size */
+            idx += 4;
+
+
+            idx += string_size;
+
+            /* Increment strings index */
+            string_idx += 1;
+        }
+
+        println!("===================");
+        println!("END Parse strings");
+        println!("===================");
     }
 }
 
@@ -200,6 +243,7 @@ fn main() {
     }
 
     let apk_path = &args[1];
+    /*
     println!("[+] Parsing {}", apk_path);
 
     let raw_file = fs::File::open(apk_path).expect("Error: cannot open APK");
@@ -210,6 +254,8 @@ fn main() {
     /* TODO: support merging of multiple DEX files */
     let mut dex_entry = zip.by_name("classes.dex")
                         .expect("Error: cannot find classes.dex in the APK");
+    */
+    let mut dex_entry = fs::File::open(apk_path).expect("Error; cannot read file");
     let mut dex_buffer = Vec::new();
     dex_entry.read_to_end(&mut dex_buffer).expect("Error: cannot unzip classes.dex file");
 
@@ -236,4 +282,67 @@ fn main() {
     if !do_checksum_match {
         panic!("Error: Adler32 checksum does not match");
     }
+
+    /* Parsing header map */
+    println!("map: {:02X}", header._map_off);
+    println!("file: {:02X}", header._file_size);
+
+    /* Get only the map */
+    let mut map_data = &dex_buffer[header._map_off as usize ..];
+    let map_size = map_data.read_u32::<LittleEndian>().unwrap();
+    println!("size: {:02X}", map_size);
+
+    let mut header_map = HeaderMap::build(map_size, header._map_off, header._file_size)
+                         .expect("Error: cannot build HeaderMap object");
+
+    for _ in 0..map_size {
+        let item_type = map_data.read_u16::<LittleEndian>().unwrap();
+        let _ = map_data.read_u16::<LittleEndian>().unwrap();  // unused
+        let item_size = map_data.read_u32::<LittleEndian>().unwrap();
+        let item_offset = map_data.read_u32::<LittleEndian>().unwrap();
+
+        header_map.add_item(item_type, item_size, item_offset);
+
+        let start = item_offset as usize;
+        let end = start + item_size as usize;
+        println!("START {:?}", start);
+        println!("END {:?}", end);
+
+        match item_type {
+            // raw_types::MapItemType::STRING_DATA_ITEM => DexData::parse_string_data(&dex_buffer[start..end], item_size),
+            _ => {
+                println!("===== Not implemented =====");
+                println!("item_type {:02X}", item_type);
+                println!("item_size {:02X}", item_size);
+                println!("item_offset {:02X}", item_offset);
+            }
+        };
+    }
+
+    header_map.compute_entries_size_bytes();
+
+    println!("{:02X}", raw_types::MapItemType::STRING_ID_ITEM as u32);
+
+
+    /* TODO: first parse the map
+    println!("String IDs offset: {:02X}", header._string_ids_off);
+    println!("String IDs size: {:02X}", header._string_ids_size);
+
+    let start: usize = header._string_ids_off as usize;
+    let end: usize = start + header._string_ids_size as usize;
+
+    println!("String IDs start: {:}", start);
+    println!("String IDs end: {:}", end);
+
+    let mut strings: Vec<String> = Vec::new();
+    let mut string_ids = &dex_buffer[start..end];
+    let mut i = start;
+    while i < end {
+        let id = string_ids.read_u32::<LittleEndian>().unwrap();
+        println!("ID: {:02X}", id);
+        let string_len = &dex_buffer[id as usize];
+        println!("Length: {:02X}", string_len);
+        i += 4;
+        if i > start + 40 { break }
+    } */
 }

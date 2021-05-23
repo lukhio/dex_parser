@@ -96,7 +96,9 @@ version = "0.1.0"
 dependencies = [
  "argparse",
  "byteorder",
+ "leb128",
  "nom",
+ "residua-mutf8",
  "zip",
 ]
 
@@ -117,6 +119,12 @@ name = "funty"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fed34cd105917e91daa4da6b3728c47b068749d6a62c59811f06ed2ac71d9da7"
+
+[[package]]
+name = "leb128"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3576a87f2ba00f6f106fdfcd16db1d698d648a26ad8e0573cad8537c3c362d2a"
 
 [[package]]
 name = "lexical-core"
@@ -195,6 +203,21 @@ name = "radium"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "941ba9d78d8e2f7ce474c015eea4d9c6d25b6a3327f9832ee29a4de27f91bbb8"
+
+[[package]]
+name = "residua-cesu8"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1b4005c6f17804c12b623da813123821133ae9f3f440ac98a0bef0721151ea35"
+
+[[package]]
+name = "residua-mutf8"
+version = "0.4.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e105ab9c80b3a07809bebf07c990a18e3c343ebcaa078062515b3886c63c7a73"
+dependencies = [
+ "residua-cesu8",
+]
 
 [[package]]
 name = "ryu"

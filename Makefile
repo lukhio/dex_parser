@@ -1,3 +1,4 @@
 all:
 	cargo build
-	./target/debug/dex_parser lumen.apk
+	RUST_BACKTRACE=1 ./target/debug/dex_parser out.dex
+	# ./target/debug/dex_parser app-release.apk
