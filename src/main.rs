@@ -137,6 +137,7 @@ impl HeaderMapItem {
 struct HeaderMap {
     size_entries: u32,
     size_bytes: u32,
+    /* TODO: replace by a hash map probably */
     items: Vec<HeaderMapItem>
 }
 
@@ -158,78 +159,57 @@ impl HeaderMap {
     }
 
     fn compute_entries_size_bytes(&mut self) {
-        println!("========== begin compute_entries_size_bytes ==========");
+        // println!("========== begin compute_entries_size_bytes ==========");
         let mut last_offset = 0;
-        for mut entry in self.items.iter_mut() {
+        for mut entry in self.items.iter_mut().rev() {
+            // println!("Type: {:02X}", entry.item_type);
+            // println!("Size entries: {:}", entry.size_entries);
+            // println!("Last offset: {:}", last_offset);
+            // println!("Offset: {:}", entry.offset);
             match entry.item_type {
-                raw_types::MapItemType::HEADER_ITEM => continue,
-                raw_types::MapItemType::MAP_LIST => continue,
+                raw_types::MapItemType::HEADER_ITEM => last_offset = entry.offset,
+                raw_types::MapItemType::MAP_LIST => last_offset = entry.offset,
                 _ => {
-                    entry.size_bytes = entry.offset - last_offset;
+                    entry.size_bytes = last_offset - entry.offset;
                     last_offset = entry.offset;
                 }
             };
+            // println!("Size bytes: {:}", entry.size_bytes);
+            // println!("----------");
         }
 
-        for entry in self.items.iter() {
-            println!("{:02X} | {:}", entry.item_type, entry.size_bytes);
-        }
-        println!("========== end compute_entries_size_bytes ==========");
+        // for entry in self.items.iter() {
+            // println!("{:02X} | {:02X} | {:} | {:}",
+                     // entry.item_type, entry.offset, entry.size_entries, entry.size_bytes);
+        // }
+        // println!("========== end compute_entries_size_bytes ==========");
     }
-}
 
-struct DexData {
-    _strings: Vec<String>,
-}
-
-impl DexData {
-    fn parse_string_data(mut strings_data: &[u8], item_size: u32) {
-        println!("===================");
-        println!("BEGIN Parse strings");
-        println!("===================");
-
+    fn parse_string_data(mut strings_data: &[u8], size_entries: u32) {
         let mut idx: u64 = 0;
         let mut string_idx = 0;
-        while string_idx < item_size {
+        while string_idx < size_entries {
             /* Read string size, which is an unsigned LEB128 */
-            let string_size = leb128::read::unsigned(&mut strings_data)
-                              .expect("Error: cannot get string size");
-            println!("{:} | {:}", idx, string_size);
+            let len = leb128::read::unsigned(&mut strings_data)
+                      .expect("Error: cannot get string size");
 
-            /* let s = match std::str::from_utf8(&strings_data[i as usize .. (i + string_size) as usize]) {
-                Ok(v) => v,
-                Err(e) => panic!("Invalid UTF-8 sequence: {}", e),
-            };
-
-            println!("result: {}", s); */
-
-            let start: usize = idx as usize;
-            let end: usize = (idx + string_size) as usize;
-
-            println!("{:}", strings_data.len());
-            for i in start..end {
-                println!("{:}", strings_data[i]);
+            /* Create buffer for current string */
+            let mut buffer = Vec::with_capacity(len as usize);
+            
+            /* There is probably a nicer way to do this... */
+            for _ in 0..len {
+                buffer.push(strings_data.read_u8().unwrap());
             }
-            let s = &strings_data[start..end];
-            // let s2 = &s.into_iter().map(|e| e as u32).copied().collect();
-            println!("{:02X?}", s);
-            println!("----------");
-            let decoded = mutf8::decode(s);
-            println!("{:}", decoded);
 
-            /* Increment idx of its own size */
-            idx += 4;
+            /* TODO: store the decoded string somewhere, probably a hash map with the string_id? */
+            let decoded = mutf8::decode(&buffer);
 
+            /* Eat null byte */
+            buffer.push(strings_data.read_u8().unwrap());
 
-            idx += string_size;
-
-            /* Increment strings index */
+            /* Increment string index */
             string_idx += 1;
         }
-
-        println!("===================");
-        println!("END Parse strings");
-        println!("===================");
     }
 }
 
@@ -305,6 +285,15 @@ fn main() {
 
     header_map.compute_entries_size_bytes();
 
+    for item in header_map.items.iter() {
+        if item.item_type == raw_types::MapItemType::STRING_DATA_ITEM {
+            let start = item.offset as usize;
+            let end = (item.offset + item.size_bytes) as usize;
+            HeaderMap::parse_string_data(&dex_buffer[start..end], item.size_entries);
+        }
+    }
+    // dex_file.parse_string_data(&dex_buffer[header._map_off as usize ..];
+
     /* for _ in 0..map_size {
         let item_type = map_data.read_u16::<LittleEndian>().unwrap();
         let _ = map_data.read_u16::<LittleEndian>().unwrap();  // unused
@@ -319,7 +308,7 @@ fn main() {
         println!("END {:?}", end);
 
         match item_type {
-            // raw_types::MapItemType::STRING_DATA_ITEM => DexData::parse_string_data(&dex_buffer[start..end], item_size),
+            // raw_types::MapItemType::STRING_DATA_ITEM => DexFile::parse_string_data(&dex_buffer[start..end], item_size),
             _ => {
                 println!("===== Not implemented =====");
                 println!("item_type {:02X}", item_type);
