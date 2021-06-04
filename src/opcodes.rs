@@ -294,13 +294,13 @@ impl OpCode {
             0x3c => Ok(OpCode::IF_GTZ),                     // Instruction 21t
             0x3d => Ok(OpCode::IF_LEZ),                     // Instruction 21t
 
-            /* Unused, we panic for now but we should probably just log the error and carry on */
-            0x3e => panic!("Error: cannot decode opcode {}", value),
-            0x3f => panic!("Error: cannot decode opcode {}", value),
-            0x40 => panic!("Error: cannot decode opcode {}", value),
-            0x41 => panic!("Error: cannot decode opcode {}", value),
-            0x42 => panic!("Error: cannot decode opcode {}", value),
-            0x43 => panic!("Error: cannot decode opcode {}", value),
+            /* Unused */
+            0x3e => panic!("Warning: use of undefined opcode {}", value),
+            0x3f => panic!("Warning: use of undefined opcode {}", value),
+            0x40 => panic!("Warning: use of undefined opcode {}", value),
+            0x41 => panic!("Warning: use of undefined opcode {}", value),
+            0x42 => panic!("Warning: use of undefined opcode {}", value),
+            0x43 => panic!("Warning: use of undefined opcode {}", value),
 
             0x44 => Ok(OpCode::AGET),                       // Instruction 23x
             0x45 => Ok(OpCode::AGET_WIDE),                  // Instruction 23x
@@ -350,8 +350,8 @@ impl OpCode {
             0x71 => Ok(OpCode::INVOKE_STATIC),              // Instruction 35c
             0x72 => Ok(OpCode::INVOKE_INTERFACE),           // Instruction 35c
 
-            /* Unused, we panic for now but we should probably just log the error and carry on */
-            0x73 => panic!("Error: cannot decode opcode {}", value),
+            /* Unused */
+            0x73 => panic!("Warning: use of undefined opcode {}", value),
 
             0x74 => Ok(OpCode::INVOKE_VIRTUAL_RANGE),       // Instruction 3rc
             0x75 => Ok(OpCode::INVOKE_SUPER_RANGE),         // Instruction 3rc
@@ -360,8 +360,8 @@ impl OpCode {
             0x78 => Ok(OpCode::INVOKE_INTERFACE_RANGE),     // Instruction 3rc
 
             /* Unused, we panic for now but we should probably just log the error and carry on */
-            0x79 => panic!("Error: cannot decode opcode {}", value),
-            0x7a => panic!("Error: cannot decode opcode {}", value),
+            0x79 => panic!("Warning: use of undefined opcode {}", value),
+            0x7a => panic!("Warning: use of undefined opcode {}", value),
 
             0x7b => Ok(OpCode::NEG_INT),                    // Instruction 12x
             0x7c => Ok(OpCode::NOT_INT),                    // Instruction 12x
@@ -468,30 +468,30 @@ impl OpCode {
             0xe1 => Ok(OpCode::SHR_INT_LIT8),               // Instruction 22b
             0xe2 => Ok(OpCode::USHR_INT_LIT8),              // Instruction 22b
 
-            /* Unused, we panic for now but we should probably just log the error and carry on */
-            0xe3 => panic!("Error: cannot decode opcode {}", value),
-            0xe4 => panic!("Error: cannot decode opcode {}", value),
-            0xe5 => panic!("Error: cannot decode opcode {}", value),
-            0xe6 => panic!("Error: cannot decode opcode {}", value),
-            0xe7 => panic!("Error: cannot decode opcode {}", value),
-            0xe8 => panic!("Error: cannot decode opcode {}", value),
-            0xe9 => panic!("Error: cannot decode opcode {}", value),
-            0xea => panic!("Error: cannot decode opcode {}", value),
-            0xeb => panic!("Error: cannot decode opcode {}", value),
-            0xec => panic!("Error: cannot decode opcode {}", value),
-            0xed => panic!("Error: cannot decode opcode {}", value),
-            0xee => panic!("Error: cannot decode opcode {}", value),
-            0xef => panic!("Error: cannot decode opcode {}", value),
-            0xf0 => panic!("Error: cannot decode opcode {}", value),
-            0xf1 => panic!("Error: cannot decode opcode {}", value),
-            0xf2 => panic!("Error: cannot decode opcode {}", value),
-            0xf3 => panic!("Error: cannot decode opcode {}", value),
-            0xf4 => panic!("Error: cannot decode opcode {}", value),
-            0xf5 => panic!("Error: cannot decode opcode {}", value),
-            0xf6 => panic!("Error: cannot decode opcode {}", value),
-            0xf7 => panic!("Error: cannot decode opcode {}", value),
-            0xf8 => panic!("Error: cannot decode opcode {}", value),
-            0xf9 => panic!("Error: cannot decode opcode {}", value),
+            /* Unused */
+            0xe3 => panic!("Warning: use of undefined opcode {}", value),
+            0xe4 => panic!("Warning: use of undefined opcode {}", value),
+            0xe5 => panic!("Warning: use of undefined opcode {}", value),
+            0xe6 => panic!("Warning: use of undefined opcode {}", value),
+            0xe7 => panic!("Warning: use of undefined opcode {}", value),
+            0xe8 => panic!("Warning: use of undefined opcode {}", value),
+            0xe9 => panic!("Warning: use of undefined opcode {}", value),
+            0xea => panic!("Warning: use of undefined opcode {}", value),
+            0xeb => panic!("Warning: use of undefined opcode {}", value),
+            0xec => panic!("Warning: use of undefined opcode {}", value),
+            0xed => panic!("Warning: use of undefined opcode {}", value),
+            0xee => panic!("Warning: use of undefined opcode {}", value),
+            0xef => panic!("Warning: use of undefined opcode {}", value),
+            0xf0 => panic!("Warning: use of undefined opcode {}", value),
+            0xf1 => panic!("Warning: use of undefined opcode {}", value),
+            0xf2 => panic!("Warning: use of undefined opcode {}", value),
+            0xf3 => panic!("Warning: use of undefined opcode {}", value),
+            0xf4 => panic!("Warning: use of undefined opcode {}", value),
+            0xf5 => panic!("Warning: use of undefined opcode {}", value),
+            0xf6 => panic!("Warning: use of undefined opcode {}", value),
+            0xf7 => panic!("Warning: use of undefined opcode {}", value),
+            0xf8 => panic!("Warning: use of undefined opcode {}", value),
+            0xf9 => panic!("Warning: use of undefined opcode {}", value),
 
             0xfa => Ok(OpCode::INVOKE_POLYMORPHIC),         // Instruction 45cc,
             0xfb => Ok(OpCode::INVOKE_POLYMORPHIC_RANGE),   // Instruction 4rcc,
@@ -501,7 +501,7 @@ impl OpCode {
             0xff => Ok(OpCode::CONST_METHOD_TYPE),          // Instruction 21c,
 
             /* Default */
-            _ => panic!("Unknown opcode {}", value),
+            _ => panic!("Warning: nknown opcode {}", value),
         }
     }
 }
